@@ -1,0 +1,7 @@
+class {{ModuleName}}Service {
+  async Executar() {
+    // Lógica do serviço
+  }
+}
+
+export default new {{ModuleName}}Service()

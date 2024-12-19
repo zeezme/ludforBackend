@@ -1,0 +1,3 @@
+export interface {{ModuleName}}RepositoryTypes {
+  // Definições de tipos do repository para {{ModuleName}}
+}

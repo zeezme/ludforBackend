@@ -1,0 +1,10 @@
+import BaseRepository from '../../_Core/Repository/BaseRepository'
+import {{ModuleName}} from '../Models/{{ModuleName}}Model.js'
+
+class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}> {
+  constructor() {
+    super({{ModuleName}})
+  }
+}
+
+export default {{ModuleName}}Repository

@@ -1,0 +1,44 @@
+import {
+  DataTypes,
+  InferAttributes,
+  InferCreationAttributes,
+  Model,
+  sql
+} from '@sequelize/core'
+
+import {
+  Attribute,
+  Default,
+  PrimaryKey,
+  Table
+} from '@sequelize/core/decorators-legacy'
+
+/**
+ * Model representing the `{{ModuleName}}` table in the database.
+ *
+ * @remarks
+ * The attribute types are defined in `I{{ModuleName}}`, derived from `InferAttributes<{{ModuleName}}>`.
+ *
+ */
+@Table({ tableName: '{{ModuleNamePluralLowerCase}}' })
+class {{ModuleName}} extends Model<
+  InferAttributes<{{ModuleName}}>,
+  InferCreationAttributes<{{ModuleName}}>
+> {
+  @PrimaryKey
+  @Attribute(DataTypes.UUID)
+  @Default(sql.uuidV4)
+  declare id?: string
+
+  @Attribute(DataTypes.STRING)
+  declare example: string
+}
+
+/**
+ * Type defining the attributes of `{{ModuleName}}` model.
+ *
+ * @typeParam I{{ModuleName}} - Attributes inferred from `{{ModuleName}}`.
+ */
+export type I{{ModuleName}} = InferAttributes<{{ModuleName}}>
+
+export default {{ModuleName}}

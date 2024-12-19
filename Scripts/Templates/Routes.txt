@@ -1,0 +1,17 @@
+import { Router } from 'express'
+
+import {{ModuleName}}Controller from '../Controller/{{ModuleName}}Controller.js'
+
+const router = Router()
+
+router.get('/', {{ModuleName}}Controller.index)
+
+router.get('/:id', {{ModuleName}}Controller.show)
+
+router.post('/', {{ModuleName}}Controller.store)
+
+router.put('/:id', {{ModuleName}}Controller.update)
+
+router.delete('/:id', {{ModuleName}}Controller.delete)
+
+export default router
