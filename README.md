@@ -6,7 +6,7 @@
 
 ![Rotas](https://github.com/user-attachments/assets/0443914a-c416-484c-beb1-5601e8f64cfc)
 
-[Link para a Collection]([https://lightchat.postman.co/workspace/Team-Workspace~5d598b61-91da-4d84-8aff-d7d845c0e2dd/collection/39679697-00c39a8e-0d49-447f-934e-883d24d97ed5?action=share&creator=39679697](https://lightchat.postman.co/workspace/Team-Workspace~5d598b61-91da-4d84-8aff-d7d845c0e2dd/collection/39679697-00c39a8e-0d49-447f-934e-883d24d97ed5?action=share&creator=39679697))
+[Link para a Collection](https://lightchat.postman.co/workspace/Team-Workspace~5d598b61-91da-4d84-8aff-d7d845c0e2dd/collection/39679697-00c39a8e-0d49-447f-934e-883d24d97ed5?action=share&creator=39679697)
 
 ### Estrutura e Funcionalidade do Banco de Dados
 
