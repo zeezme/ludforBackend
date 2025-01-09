@@ -2,11 +2,20 @@ import jwt from 'jsonwebtoken'
 import User from '../../User/Models/UserModel.js'
 import Authentication from '../Models/AuthenticationModel.js'
 import { AppError } from '../../_Core/Middleware/ErrorHandler.js'
-import { IAuthenticationServiceTokenAttributes } from '../AuthenticationTypes.js'
 import { Transaction } from '@sequelize/core'
 
-export interface IAuthenticationServiceEmiteTokenAttributes {
+export interface IAuthenticationServiceEmitTokenAttributes {
   user: User
+  transaction?: Transaction
+}
+export interface IAuthenticationServiceVerifyTokenAttributes {
+  token: string
+  transaction?: Transaction
+}
+
+export interface IAuthenticationServiceVerifyEnsureTokenAttributes {
+  user?: User
+  token?: string
   transaction?: Transaction
 }
 
@@ -14,14 +23,14 @@ class AuthenticationService {
   /**
    * Emits a JSON Web Token that can be used to authenticate a user.
    *
-   * @param {IAuthenticationServiceEmiteTokenAttributes} props - The user to be authenticated.
+   * @param {IAuthenticationServiceEmitTokenAttributes} props - The user to be authenticated.
    * @returns {Promise<string>} The JSON Web Token.
    *
    * @throws {Error} If the JWT_SECRET is not set.
    * @throws {Error} If the user is not found.
    */
   async EmitToken(
-    props: IAuthenticationServiceEmiteTokenAttributes
+    props: IAuthenticationServiceEmitTokenAttributes
   ): Promise<string> {
     const JWT_SECRET = process.env.JWT_SECRET
 
@@ -45,18 +54,22 @@ class AuthenticationService {
       userRole: user.person?.type || 'user'
     }
 
-    const token = jwt.sign(payload, JWT_SECRET, options)
+    try {
+      const token = jwt.sign(payload, JWT_SECRET, options)
 
-    await Authentication.upsert(
-      {
-        token,
-        expiresAt: new Date(Date.now() + 3600 * 1000),
-        userId: user.id
-      },
-      { transaction }
-    )
+      await Authentication.upsert(
+        {
+          token,
+          expiresAt: new Date(Date.now() + 3600 * 1000),
+          userId: user.id
+        },
+        { transaction }
+      )
 
-    return token
+      return token
+    } catch (error: any) {
+      throw new Error(error)
+    }
   }
 
   /**
@@ -67,7 +80,9 @@ class AuthenticationService {
    *
    * @throws {Error} If the JWT_SECRET is not set.
    */
-  async ValidateToken(token: string): Promise<any> {
+  async ValidateToken(
+    props: IAuthenticationServiceVerifyTokenAttributes
+  ): Promise<any> {
     const JWT_SECRET = process.env.JWT_SECRET
 
     if (!JWT_SECRET) {
@@ -75,7 +90,7 @@ class AuthenticationService {
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
+      const decoded = jwt.verify(props.token, JWT_SECRET) as any
 
       const { userId, userName, exp, iat } = decoded
 
@@ -83,16 +98,85 @@ class AuthenticationService {
         throw new AppError('Token payload is missing required attributes', 400)
       }
 
-      const user = await User.findOne({ where: { id: userId } })
+      const user = await User.findOne({
+        where: { id: userId },
+        transaction: props.transaction
+      })
 
       if (!user) {
         throw new AppError('User not found', 404)
       }
 
       return { userId, userName, exp, iat }
-    } catch (error) {
-      console.error('Token validation error:', error)
-      return null
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        throw new AppError('Token has expired', 401)
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new AppError('Invalid token', 401)
+      } else {
+        throw new AppError('Token validation failed', 500)
+      }
+    }
+  }
+
+  /**
+   * Validates a JSON Web Token by verifying its signature and extracting the payload.
+   * If the token is invalid or expired, reissues a new token for the same user.
+   *
+   * @param {IAuthenticationServiceVerifyTokenAttributes} props - An object containing the token and transaction.
+   * @returns {Promise<string>} The valid token.
+   *
+   * @throws {Error} If the JWT_SECRET is not set.
+   * @throws {AppError} If the token payload is invalid or the user is not found.
+   */
+  async ValidateEnsureToken(
+    props: IAuthenticationServiceVerifyEnsureTokenAttributes
+  ): Promise<string> {
+    const { token, transaction, user } = props
+
+    if (!token) {
+      if (!user) {
+        throw new AppError('User must be provided.', 400)
+      }
+      const newToken = await this.EmitToken({ user, transaction })
+
+      return newToken
+    }
+
+    try {
+      await this.ValidateToken({ token, transaction })
+
+      return token
+    } catch {
+      const JWT_SECRET = process.env.JWT_SECRET
+
+      if (!JWT_SECRET) {
+        throw new Error('Missing JWT_SECRET, verify .env file')
+      }
+
+      try {
+        const decoded = jwt.decode(token) as any
+
+        if (!decoded || !decoded.userId) {
+          throw new AppError(
+            'Invalid token payload. Cannot reissue token.',
+            400
+          )
+        }
+
+        const user = await User.findOne({
+          where: { id: decoded.userId },
+          transaction
+        })
+
+        if (!user) {
+          throw new AppError('User not found for token reissue.', 404)
+        }
+
+        return this.EmitToken({ user, transaction })
+      } catch (error) {
+        throw new AppError(`Failed to decode token payload. ${error}`, 400)
+      }
     }
   }
 }

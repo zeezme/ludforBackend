@@ -1,3 +1,4 @@
+import sequelize from '../../../../config/database.config.js'
 import { AppError } from '../../_Core/Middleware/ErrorHandler.js'
 import Authentication from '../../Authentication/Models/AuthenticationModel.js'
 import AuthenticationService from '../../Authentication/Services/AuthenticationService.js'
@@ -23,67 +24,69 @@ class UserSignInService {
   public async run(
     attributes: UserSignInServiceAttributesTypes
   ): Promise<{ token: string; permissions: string[] }> {
-    const user = await User.findOne({
-      where: {
-        username: attributes.username
-      }
-    })
+    const transaction = await sequelize.startUnmanagedTransaction()
 
-    if (!user) {
-      throw new AppError('Invalid username or password', 401)
-    }
-
-    const permissionsList = await Permission.findAll({
-      include: {
-        model: User,
-        as: 'users',
+    try {
+      const user = await User.findOne({
         where: {
-          id: user.id
+          username: attributes.username
         },
-        attributes: []
-      },
-      attributes: ['description']
-    })
+        transaction
+      })
 
-    const isPasswordValid = await bcrypt.compare(
-      attributes.password,
-      user.password
-    )
-
-    if (!isPasswordValid) {
-      throw new AppError('Invalid username or password', 401)
-    }
-
-    let token: string | undefined = undefined
-
-    const authentication = await Authentication.findOne({
-      where: {
-        userId: user.id
+      if (!user) {
+        throw new AppError('Invalid username or password', 401)
       }
-    })
 
-    if (authentication) {
-      // Returns null if token is invalid
-      const istokenValid = await AuthenticationService.ValidateToken(
-        authentication.token
+      const isPasswordValid = await bcrypt.compare(
+        attributes.password,
+        user.password
       )
 
-      if (istokenValid) {
-        token = authentication.token
-      } else {
-        token = await AuthenticationService.EmitToken({ user })
+      if (!isPasswordValid) {
+        throw new AppError('Invalid username or password', 401)
       }
-    } else {
-      token = await AuthenticationService.EmitToken({ user })
-    }
 
-    if (!token) {
-      throw new AppError('Problem emitting token', 500)
-    }
+      const authentication = await Authentication.findOne({
+        where: {
+          userId: user.id
+        },
+        order: [['createdAt', 'DESC']],
+        transaction
+      })
 
-    return {
-      token,
-      permissions: permissionsList.map(permission => permission.description)
+      const token = await AuthenticationService.ValidateEnsureToken({
+        user,
+        token: authentication?.token,
+        transaction
+      })
+
+      if (!token) {
+        throw new AppError('Problem emitting token', 500)
+      }
+
+      const permissionsList = await Permission.findAll({
+        include: {
+          model: User,
+          as: 'users',
+          where: {
+            id: user.id
+          },
+          attributes: []
+        },
+        attributes: ['description'],
+        transaction
+      })
+
+      transaction.commit()
+
+      return {
+        token,
+        permissions: permissionsList.map(permission => permission.description)
+      }
+    } catch (error) {
+      await transaction.rollback()
+      throw new AppError(`Error creating user: ${error}`, 500)
     }
   }
 }

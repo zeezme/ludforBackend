@@ -27,7 +27,7 @@ const defaultPermissions = [
 class UserSignUpService {
   public async run(
     attributes: UserSignUpServiceAttributesTypes
-  ): Promise<string> {
+  ): Promise<{ token: string; permissions: string[] }> {
     const transaction = await sequelize.startUnmanagedTransaction()
     try {
       let user = await User.findOne({
@@ -69,11 +69,25 @@ class UserSignUpService {
         transaction
       })
 
-      await AuthenticationService.ValidateToken(token)
+      const permissionsList = await Permission.findAll({
+        include: {
+          model: User,
+          as: 'users',
+          where: {
+            id: user.id
+          },
+          attributes: []
+        },
+        attributes: ['description'],
+        transaction
+      })
 
       await transaction.commit()
 
-      return 'User created successfully'
+      return {
+        token,
+        permissions: permissionsList.map(permission => permission.description)
+      }
     } catch (error) {
       await transaction.rollback()
       throw new AppError(`Error creating user: ${error}`, 500)
