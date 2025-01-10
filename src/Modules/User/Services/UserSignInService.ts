@@ -23,7 +23,7 @@ class UserSignInService {
    */
   public async run(
     attributes: UserSignInServiceAttributesTypes
-  ): Promise<{ token: string; permissions: string[] }> {
+  ): Promise<{ token: string; permissions: string[]; username: string }> {
     const transaction = await sequelize.startUnmanagedTransaction()
 
     try {
@@ -81,6 +81,7 @@ class UserSignInService {
       transaction.commit()
 
       return {
+        username: user.username,
         token,
         permissions: permissionsList.map(permission => permission.description)
       }

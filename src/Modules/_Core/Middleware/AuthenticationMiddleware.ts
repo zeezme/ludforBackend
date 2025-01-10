@@ -16,7 +16,9 @@ export const authenticationMiddleware = async (
   let validToken
 
   try {
-    validToken = await AuthenticationService.ValidateToken(token)
+    validToken = await AuthenticationService.ValidateToken({
+      token
+    })
   } catch (error) {
     return next(new AppError(`${error}`, 401))
   }
