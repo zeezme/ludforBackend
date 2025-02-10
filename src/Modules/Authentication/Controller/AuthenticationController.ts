@@ -20,7 +20,7 @@ class AuthenticationController {
 
       return response.send(true)
     } catch {
-      return response.status(401).send(false)
+      return response.status(200).send(false)
     }
   }
 }

@@ -32,7 +32,8 @@ class PersonController {
         userId
       },
       offset,
-      limit: pageSize
+      limit: pageSize,
+      order: [['createdAt', 'DESC']]
     })
 
     response.json({
